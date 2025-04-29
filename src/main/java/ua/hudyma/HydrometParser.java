@@ -9,6 +9,7 @@ import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.lang.System.*;
 
@@ -20,15 +21,29 @@ public class HydrometParser {
     static Map<String, List<HydrometUnit>> hydroMap;
 
     public static void main(String[] args) throws IOException {
-        parseHydroUrl();
+        parseHydroUrl(false);
         convertCsvToMapList();
         convertMapListToModelMapList();
-        out.println("Max т-ра: " + findMaxTemp() + " град");
-        out.println("Min т-ра: " + findMinTemp() + " град");
+        var maxTemp = findMaxTemp();
+        var minTemp = findMinTemp();
+        var maxTempDate = getTempDate(maxTemp).orElseThrow();
+        var minTempDate = getTempDate(minTemp).orElseThrow();
+        out.println("Max т-ра: " + findMaxTemp() + "° "+ maxTempDate);
+        out.println("Min т-ра: " + findMinTemp() + "° " + minTempDate);
     }
 
-    private static void parseHydroUrl() throws IOException {
-        if (new File(OUTPUT_DATA_FILENAME).exists()) {
+    private static Optional<String> getTempDate(float temp) {
+        return hydroMap
+                .entrySet()
+                .stream()
+                .flatMap(e -> e.getValue().stream()
+                        .filter(o -> o.temp == temp)
+                        .map(o -> e.getKey() + " " + o.time))
+                .findFirst();
+    }
+
+    private static void parseHydroUrl(boolean disableOverwritingDailyData) throws IOException {
+        if (disableOverwritingDailyData && new File(OUTPUT_DATA_FILENAME).exists()) {
             out.println("file exists, skipping parsing");
             return;
         }
@@ -78,19 +93,11 @@ public class HydrometParser {
                 var unit = new HydrometUnit();
                 var array = list.split(",");
                 unit.setTime(array[0]);
-                if (array[1].startsWith(".")) {
-                    unit.setTemp("0" + array[1]);
-                } else {
-                    unit.setTemp(array[1]);
-                }
-                if (array[2].startsWith(".")) {
-                    unit.setDewPoint("0" + array[2]);
-                } else {
-                    unit.setDewPoint(array[2]);
-                }
+                unit.setTemp(Float.parseFloat(array[1]));
+                unit.setDewPoint(Float.parseFloat(array[2]));
                 unit.setElements(array[3]);
                 unit.setWindDirection(array[5]);
-                unit.setWindSpeed(array[6]);
+                unit.setWindSpeed(Integer.parseInt(array[6]));
                 hydroList.add(unit);
             }
             hydroMap.put(key, hydroList);
@@ -107,8 +114,9 @@ public class HydrometParser {
                 .stream()
                 .flatMap(List::stream)
                 .map(e -> e.temp)
-                .map(Float::parseFloat)
-                .reduce(Math::min).orElseThrow();
+                //.map(Float::parseFloat)
+                .reduce(Math::min)
+                .orElseThrow();
     }
 
     private static float findMaxTemp() {
@@ -117,25 +125,21 @@ public class HydrometParser {
                 .stream()
                 .flatMap(List::stream)
                 .map(e -> e.temp)
-                .map(Float::parseFloat)
+                //.map(Float::parseFloat)
                 .reduce(Math::max)
                 .orElseThrow();
     }
 
     static class HydrometUnit {
 
-        String time, temp, dewPoint, elements, windDirection, windSpeed;
+        String time, elements, windDirection;
+
+        float temp, dewPoint;
+
+        int windSpeed;
 
         public void setTime(String time) {
             this.time = time;
-        }
-
-        public void setTemp(String temp) {
-            this.temp = temp;
-        }
-
-        public void setDewPoint(String dewPoint) {
-            this.dewPoint = dewPoint;
         }
 
         public void setElements(String elements) {
@@ -146,14 +150,17 @@ public class HydrometParser {
             this.windDirection = windDirection;
         }
 
-        public void setWindSpeed(String windSpeed) {
+        public void setWindSpeed(int windSpeed) {
             this.windSpeed = windSpeed;
         }
 
-        public HydrometUnit() {
-
+        public void setTemp(float temp) {
+            this.temp = temp;
         }
 
+        public void setDewPoint(float dewPoint) {
+            this.dewPoint = dewPoint;
+        }
     }
 
 
