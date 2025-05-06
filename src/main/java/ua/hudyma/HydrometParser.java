@@ -1,15 +1,19 @@
 package ua.hudyma;
 
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.data.category.DefaultCategoryDataset;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import javax.swing.*;
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static java.lang.System.*;
 
@@ -28,8 +32,19 @@ public class HydrometParser {
         var minTemp = findMinTemp();
         var maxTempDate = getTempDate(maxTemp).orElseThrow();
         var minTempDate = getTempDate(minTemp).orElseThrow();
-        out.println("Max т-ра: " + findMaxTemp() + "° "+ maxTempDate);
+        out.println("Max т-ра: " + findMaxTemp() + "° " + maxTempDate);
         out.println("Min т-ра: " + findMinTemp() + "° " + minTempDate);
+        List<Float> tempList = getTempList(hydroMap);
+        createChart(tempList);
+    }
+
+    private static List<Float> getTempList(Map<String, List<HydrometUnit>> hydroMap) {
+        return hydroMap
+                .values()
+                .stream()
+                .flatMap(List::stream)
+                .map(HydrometUnit::getTemp)
+                .toList();
     }
 
     private static Optional<String> getTempDate(float temp) {
@@ -114,7 +129,6 @@ public class HydrometParser {
                 .stream()
                 .flatMap(List::stream)
                 .map(e -> e.temp)
-                //.map(Float::parseFloat)
                 .reduce(Math::min)
                 .orElseThrow();
     }
@@ -125,16 +139,48 @@ public class HydrometParser {
                 .stream()
                 .flatMap(List::stream)
                 .map(e -> e.temp)
-                //.map(Float::parseFloat)
                 .reduce(Math::max)
                 .orElseThrow();
+    }
+
+    private static void createChart(List<Float> tempList) {
+        var dataset = new DefaultCategoryDataset();
+
+        var hrsCounter = 0;
+        var dayCounter = 1;
+
+        for (Float ele : tempList) {
+            dataset.addValue(ele, "Температура", (hrsCounter + "/" + dayCounter));
+            hrsCounter += 3;
+            if (hrsCounter == 24) {
+                hrsCounter = 0;
+                dayCounter++;
+            }
+        }
+
+        JFreeChart chart = ChartFactory.createLineChart(
+                "Графік температур Пожежевська", "Години", "Температура",
+                dataset
+        );
+
+        JFrame frame = new JFrame("Гідрометеоцентр України");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.add(new ChartPanel(chart));
+        frame.setSize(1200, 400);
+        frame.setVisible(true);
     }
 
     static class HydrometUnit {
 
         String time, elements, windDirection;
 
-        float temp, dewPoint;
+        float temp;
+
+        public float getTemp() {
+            return temp;
+        }
+
+        float dewPoint;
 
         int windSpeed;
 
