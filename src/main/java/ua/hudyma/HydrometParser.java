@@ -117,7 +117,11 @@ public class HydrometParser {
                 unit.setWindSpeed(Integer.parseInt(array[6]));
                 hydroList.add(unit);
             }
-            hydroMap.put(key, hydroList);
+            var sortedList = hydroList
+                    .stream()
+                    .sorted(Comparator.comparing(HydrometUnit::getTime))
+                    .toList();
+            hydroMap.put(key, sortedList);
         }
         hydroMap = hydroMap.entrySet()
                 .stream()
@@ -176,7 +180,7 @@ public class HydrometParser {
             for (HydrometUnit hydro : entry.getValue()) {
                 dataset.addValue(hydro.temp,
                         "Температура",
-                        entry.getKey() + "/" + hydro.time);
+                        hydro.time.split(":")[0] + "/" + entry.getKey().split("\\.")[0]);
             }
         }
         buildChart(dataset);
@@ -185,7 +189,7 @@ public class HydrometParser {
 
     private static void buildChart(DefaultCategoryDataset dataset) {
         JFreeChart chart = ChartFactory.createLineChart(
-                "Графік температур Пожежевська", "Години", "Температура",
+                "Графік температур Пожежевська", "Години (0/9 = 0:00/09.MM)", "Температура",
                 dataset
         );
 
@@ -198,7 +202,14 @@ public class HydrometParser {
 
     static class HydrometUnit {
 
-        String time, elements, windDirection;
+        String time;
+
+        public String getTime() {
+            return time;
+        }
+
+        String elements;
+        String windDirection;
 
         float temp;
 
