@@ -14,6 +14,7 @@ import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.lang.System.*;
 
@@ -34,8 +35,9 @@ public class HydrometParser {
         var minTempDate = getTempDate(minTemp).orElseThrow();
         out.println("Max т-ра: " + findMaxTemp() + "° " + maxTempDate);
         out.println("Min т-ра: " + findMinTemp() + "° " + minTempDate);
-        List<Float> tempList = getTempList(hydroMap);
-        createChart(tempList);
+        var tempList = getTempList(hydroMap);
+        //createChart(tempList);
+        createChart(hydroMap);
     }
 
     private static List<Float> getTempList(Map<String, List<HydrometUnit>> hydroMap) {
@@ -78,7 +80,7 @@ public class HydrometParser {
     }
 
     private static void convertCsvToMapList() throws FileNotFoundException {
-        map = new HashMap<>();
+        map = new LinkedHashMap<>();
         var scan = new Scanner(new FileReader(HydrometParser.OUTPUT_DATA_FILENAME));
         scan.nextLine();
         while (scan.hasNext()) {
@@ -99,7 +101,7 @@ public class HydrometParser {
     }
 
     private static void convertMapListToModelMapList() {
-        hydroMap = new HashMap<>();
+        hydroMap = new LinkedHashMap<>();
         for (Map.Entry<String, List<String>> entry : map.entrySet()) {
             var key = entry.getKey();
             var rawList = entry.getValue();
@@ -117,6 +119,14 @@ public class HydrometParser {
             }
             hydroMap.put(key, hydroList);
         }
+        hydroMap = hydroMap.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByKey())
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (oldValue, newValue) -> oldValue,
+                        LinkedHashMap::new));
     }
 
     private static String getDate() {
@@ -157,7 +167,23 @@ public class HydrometParser {
                 dayCounter++;
             }
         }
+        buildChart(dataset);
+    }
 
+    private static void createChart(Map<String, List<HydrometUnit>> map) {
+        var dataset = new DefaultCategoryDataset();
+        for (Map.Entry<String, List<HydrometUnit>> entry : map.entrySet()) {
+            for (HydrometUnit hydro : entry.getValue()) {
+                dataset.addValue(hydro.temp,
+                        "Температура",
+                        entry.getKey() + "/" + hydro.time);
+            }
+        }
+        buildChart(dataset);
+    }
+
+
+    private static void buildChart(DefaultCategoryDataset dataset) {
         JFreeChart chart = ChartFactory.createLineChart(
                 "Графік температур Пожежевська", "Години", "Температура",
                 dataset
