@@ -21,9 +21,9 @@ import static java.lang.System.*;
 
 public class HydrometParser {
 
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     static final String OUTPUT_DATA_FILENAME = "csv//" + getDate() + ".csv";
     public static final String HYDROMET_URL = "http://gmc.uzhgorod.ua/metdata.php?StNo=33646";
-    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
     static Map<String, List<String>> map;
     static Map<String, List<HydrometUnit>> hydroMap;
 
@@ -37,18 +37,7 @@ public class HydrometParser {
         var minTempDate = getTempDate(minTemp).orElseThrow();
         out.println("Max т-ра: " + findMaxTemp() + "° " + maxTempDate);
         out.println("Min т-ра: " + findMinTemp() + "° " + minTempDate);
-        /*var tempList = getTempList(hydroMap);
-        createChart(tempList);*/
         createChart(hydroMap);
-    }
-
-    private static List<Float> getTempList(Map<String, List<HydrometUnit>> hydroMap) {
-        return hydroMap
-                .values()
-                .stream()
-                .flatMap(List::stream)
-                .map(HydrometUnit::getTemp)
-                .toList();
     }
 
     private static Optional<String> getTempDate(float temp) {
