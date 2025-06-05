@@ -13,6 +13,7 @@ import javax.swing.*;
 import java.io.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,7 +22,8 @@ import static java.lang.System.*;
 
 public class HydrometParser {
 
-    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy"),
+            TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     static final String OUTPUT_DATA_FILENAME = "csv//" + getDate() + ".csv";
     public static final String HYDROMET_URL = "http://gmc.uzhgorod.ua/metdata.php?StNo=33646";
     static Map<String, List<String>> map;
@@ -37,7 +39,7 @@ public class HydrometParser {
         var minTempDate = getTempDate(minTemp).orElseThrow();
         out.println("Max т-ра: " + findMaxTemp() + "° " + maxTempDate);
         out.println("Min т-ра: " + findMinTemp() + "° " + minTempDate);
-        createChart(hydroMap);
+        createChart();
     }
 
     private static Optional<String> getTempDate(float temp) {
@@ -77,8 +79,10 @@ public class HydrometParser {
         while (scan.hasNext()) {
             var scanLine = scan.nextLine().split(" ");
             String currentDate = scanLine[0];
-            var dataStr = scanLine[1];
-            dataStr = scanLine.length > 2 ? dataStr += scanLine[2] : dataStr;
+            //var dataStr = scanLine[1];
+            //dataStr = scanLine.length > 2 ? dataStr += scanLine[2] : dataStr;
+            String dataStr = String.join(",",
+                    Arrays.copyOfRange(scanLine, 1, scanLine.length));
             List<String> datalist;
             datalist = map.containsKey(currentDate) ? map.get(currentDate) : new ArrayList<>();
             datalist.add(dataStr);
@@ -96,7 +100,10 @@ public class HydrometParser {
             for (String list : rawList) {
                 var unit = new HydrometUnit();
                 var array = list.split(",");
-                unit.setTime(array[0]);
+                if (array[0].length() == 4) {
+                    unit.setTime("0" + array[0]);
+                }
+                else unit.setTime(array[0]);
                 unit.setTemp(Float.parseFloat(array[1]));
                 unit.setDewPoint(Float.parseFloat(array[2]));
                 unit.setElements(array[3]);
@@ -106,7 +113,7 @@ public class HydrometParser {
             }
             var sortedList = hydroList
                     .stream()
-                    .sorted(Comparator.comparing(HydrometUnit::getTime))
+                    .sorted(Comparator.comparing(ele -> LocalTime.parse(ele.getTime(), TIME_FORMATTER)))
                     .toList();
             hydroMap.put(key, sortedList);
         }
@@ -148,9 +155,9 @@ public class HydrometParser {
                 .orElseThrow();
     }
 
-    private static void createChart(Map<String, List<HydrometUnit>> map) {
+    private static void createChart() {
         var dataset = new DefaultCategoryDataset();
-        for (Map.Entry<String, List<HydrometUnit>> entry : map.entrySet()) {
+        for (Map.Entry<String, List<HydrometUnit>> entry : hydroMap.entrySet()) {
             for (HydrometUnit hydro : entry.getValue()) {
                 dataset.addValue(hydro.temp,
                         "t°",
