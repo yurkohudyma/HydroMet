@@ -11,6 +11,7 @@ import org.jsoup.select.Elements;
 
 import javax.swing.*;
 import java.io.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -22,6 +23,7 @@ public class HydrometParser {
 
     static final String OUTPUT_DATA_FILENAME = "csv//" + getDate() + ".csv";
     public static final String HYDROMET_URL = "http://gmc.uzhgorod.ua/metdata.php?StNo=33646";
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
     static Map<String, List<String>> map;
     static Map<String, List<HydrometUnit>> hydroMap;
 
@@ -35,8 +37,8 @@ public class HydrometParser {
         var minTempDate = getTempDate(minTemp).orElseThrow();
         out.println("Max т-ра: " + findMaxTemp() + "° " + maxTempDate);
         out.println("Min т-ра: " + findMinTemp() + "° " + minTempDate);
-        var tempList = getTempList(hydroMap);
-        //createChart(tempList);
+        /*var tempList = getTempList(hydroMap);
+        createChart(tempList);*/
         createChart(hydroMap);
     }
 
@@ -89,11 +91,7 @@ public class HydrometParser {
             var dataStr = scanLine[1];
             dataStr = scanLine.length > 2 ? dataStr += scanLine[2] : dataStr;
             List<String> datalist;
-            if (map.containsKey(currentDate)) {
-                datalist = map.get(currentDate);
-            } else {
-                datalist = new ArrayList<>();
-            }
+            datalist = map.containsKey(currentDate) ? map.get(currentDate) : new ArrayList<>();
             datalist.add(dataStr);
             map.put(currentDate, datalist);
         }
@@ -123,18 +121,22 @@ public class HydrometParser {
                     .toList();
             hydroMap.put(key, sortedList);
         }
+
         hydroMap = hydroMap.entrySet()
                 .stream()
-                .sorted(Map.Entry.comparingByKey())
+                .sorted(Comparator.comparing(
+                        entry -> LocalDate.parse(entry.getKey(),
+                                DATE_TIME_FORMATTER)))
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
                         Map.Entry::getValue,
                         (oldValue, newValue) -> oldValue,
-                        LinkedHashMap::new));
+                        LinkedHashMap::new
+                ));
     }
 
     private static String getDate() {
-        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+        return LocalDateTime.now().format(DATE_TIME_FORMATTER);
     }
 
     private static float findMinTemp() {
@@ -157,29 +159,12 @@ public class HydrometParser {
                 .orElseThrow();
     }
 
-    private static void createChart(List<Float> tempList) {
-        var dataset = new DefaultCategoryDataset();
-
-        var hrsCounter = 0;
-        var dayCounter = 1;
-
-        for (Float ele : tempList) {
-            dataset.addValue(ele, "Температура", (hrsCounter + "/" + dayCounter));
-            hrsCounter += 3;
-            if (hrsCounter == 24) {
-                hrsCounter = 0;
-                dayCounter++;
-            }
-        }
-        buildChart(dataset);
-    }
-
     private static void createChart(Map<String, List<HydrometUnit>> map) {
         var dataset = new DefaultCategoryDataset();
         for (Map.Entry<String, List<HydrometUnit>> entry : map.entrySet()) {
             for (HydrometUnit hydro : entry.getValue()) {
                 dataset.addValue(hydro.temp,
-                        "Температура",
+                        "t°",
                         hydro.time.split(":")[0] + "/" + entry.getKey().split("\\.")[0]);
             }
         }
@@ -194,7 +179,7 @@ public class HydrometParser {
         );
 
         JFrame frame = new JFrame("Гідрометеоцентр України");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.add(new ChartPanel(chart));
         frame.setSize(1200, 400);
         frame.setVisible(true);
