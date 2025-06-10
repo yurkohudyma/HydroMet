@@ -79,8 +79,6 @@ public class HydrometParser {
         while (scan.hasNext()) {
             var scanLine = scan.nextLine().split(" ");
             String currentDate = scanLine[0];
-            //var dataStr = scanLine[1];
-            //dataStr = scanLine.length > 2 ? dataStr += scanLine[2] : dataStr;
             String dataStr = String.join(",",
                     Arrays.copyOfRange(scanLine, 1, scanLine.length));
             List<String> datalist;
@@ -159,9 +157,10 @@ public class HydrometParser {
         var dataset = new DefaultCategoryDataset();
         for (Map.Entry<String, List<HydrometUnit>> entry : hydroMap.entrySet()) {
             for (HydrometUnit hydro : entry.getValue()) {
+                var dateDDmm = entry.getKey().split("\\.");
                 dataset.addValue(hydro.temp,
                         "t°",
-                        hydro.time.split(":")[0] + "/" + entry.getKey().split("\\.")[0]);
+                        hydro.time + "/" + dateDDmm[0]+ "." + dateDDmm[1]);
             }
         }
         buildChart(dataset);
@@ -170,7 +169,7 @@ public class HydrometParser {
 
     private static void buildChart(DefaultCategoryDataset dataset) {
         JFreeChart chart = ChartFactory.createLineChart(
-                "Графік температур Пожежевська", "Години (0/9 = 0:00/09.MM)", "Температура",
+                "Графік температур Пожежевська", "Години", "Температура",
                 dataset
         );
 
