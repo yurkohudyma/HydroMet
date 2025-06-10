@@ -24,13 +24,15 @@ public class HydrometParser {
 
     public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy"),
             TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-    static final String OUTPUT_DATA_FILENAME = "csv//" + getDate() + ".csv";
+    static final String OUTPUT_DATA_FILENAME = "S:\\TOOLS\\.Hudyma_projects\\HydrometParser\\csv\\" + getDate() + ".csv";
+            //"csv" + File.separator + getDate() + ".csv";
+            //"csv//" + getDate() + ".csv";
     public static final String HYDROMET_URL = "http://gmc.uzhgorod.ua/metdata.php?StNo=33646";
     static Map<String, List<String>> map;
     static Map<String, List<HydrometUnit>> hydroMap;
 
     public static void main(String[] args) throws IOException {
-        parseHydroUrl(false);
+        parseHydroUrl(true);
         convertCsvToMapList();
         convertMapListToModelMapList();
         var maxTemp = findMaxTemp();
@@ -52,8 +54,8 @@ public class HydrometParser {
                 .findFirst();
     }
 
-    private static void parseHydroUrl(boolean disableOverwritingDailyData) throws IOException {
-        if (disableOverwritingDailyData && new File(OUTPUT_DATA_FILENAME).exists()) {
+    private static void parseHydroUrl(boolean enableOverwritingDailyData) throws IOException {
+        if (new File(OUTPUT_DATA_FILENAME).exists() && !enableOverwritingDailyData) {
             out.println("file exists, skipping parsing");
             return;
         }
